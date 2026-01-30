@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { ShoppingBag, ChevronLeft, Home, Settings, PlusCircle, LogOut, LayoutDashboard, UtensilsCrossed, Menu, User } from 'lucide-react';
+import { ShoppingBag, ChevronLeft, Home, Settings, PlusCircle, LogOut, LayoutDashboard, UtensilsCrossed, Menu, User, Package } from 'lucide-react';
 import { useStore } from '../store/StoreContext';
 import { useAuth } from '../context/AuthContext';
 
@@ -44,9 +44,14 @@ export const UserLayout: React.FC<LayoutProps> = ({ children }) => {
               <Link to="/#about" className="hover:text-red-600 transition-colors">About</Link>
               <Link to="/#contact" className="hover:text-red-600 transition-colors">Contact</Link>
               {user ? (
-                <button onClick={() => logout()} className="hover:text-red-600 transition-colors flex items-center gap-1">
-                  <LogOut size={16} /> Logout
-                </button>
+                <>
+                  <Link to="/orders" className="hover:text-red-600 transition-colors flex items-center gap-1">
+                    <Package size={16} /> My Orders
+                  </Link>
+                  <button onClick={() => logout()} className="hover:text-red-600 transition-colors flex items-center gap-1">
+                    <LogOut size={16} /> Logout
+                  </button>
+                </>
               ) : (
                 <Link to="/login" className="hover:text-red-600 transition-colors flex items-center gap-1">
                   <User size={16} /> Login

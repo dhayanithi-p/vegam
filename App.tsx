@@ -7,6 +7,7 @@ import ProductDetails from './pages/user/ProductDetails';
 import Cart from './pages/user/Cart';
 import Checkout from './pages/user/Checkout';
 import OrderSuccess from './pages/user/OrderSuccess';
+import OrderHistory from './pages/user/OrderHistory';
 import AdminLogin from './pages/admin/AdminLogin';
 import { AdminDashboard, AddItem, RestaurantSettings } from './pages/admin/AdminDashboard';
 import { AuthProvider } from './context/AuthContext';
@@ -42,6 +43,11 @@ const App = () => {
             <Route path="/order-success" element={
               <ProtectedRoute>
                 <UserLayout><OrderSuccess /></UserLayout>
+              </ProtectedRoute>
+            } />
+            <Route path="/orders" element={
+              <ProtectedRoute>
+                <UserLayout><OrderHistory /></UserLayout>
               </ProtectedRoute>
             } />
 
