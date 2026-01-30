@@ -9,6 +9,10 @@ import Checkout from './pages/user/Checkout';
 import OrderSuccess from './pages/user/OrderSuccess';
 import AdminLogin from './pages/admin/AdminLogin';
 import { AdminDashboard, AddItem, RestaurantSettings } from './pages/admin/AdminDashboard';
+import { AuthProvider } from './context/AuthContext';
+import SignIn from './pages/auth/SignIn';
+import SignUp from './pages/auth/SignUp';
+import ProtectedRoute from './components/ProtectedRoute';
 
 // Simple guard for admin routes
 const ProtectedAdminRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -19,37 +23,52 @@ const ProtectedAdminRoute: React.FC<{ children: React.ReactNode }> = ({ children
 const App = () => {
   return (
     <StoreProvider>
-      <Router>
-        <Routes>
-          {/* User Routes */}
-          <Route path="/" element={<UserLayout><Home /></UserLayout>} />
-          <Route path="/product/:id" element={<UserLayout><ProductDetails /></UserLayout>} />
-          <Route path="/cart" element={<UserLayout><Cart /></UserLayout>} />
-          <Route path="/checkout" element={<UserLayout><Checkout /></UserLayout>} />
-          <Route path="/order-success" element={<UserLayout><OrderSuccess /></UserLayout>} />
+      <AuthProvider>
+        <Router>
+          <Routes>
+            {/* Public Auth Routes */}
+            <Route path="/login" element={<SignIn />} />
+            <Route path="/signup" element={<SignUp />} />
 
-          {/* Admin Routes */}
-          <Route path="/admin/login" element={<AdminLogin />} />
-          
-          <Route path="/admin/dashboard" element={
-            <ProtectedAdminRoute>
-              <AdminDashboard />
-            </ProtectedAdminRoute>
-          } />
-          <Route path="/admin/add-item" element={
-            <ProtectedAdminRoute>
-              <AddItem />
-            </ProtectedAdminRoute>
-          } />
-          <Route path="/admin/restaurant" element={
-            <ProtectedAdminRoute>
-              <RestaurantSettings />
-            </ProtectedAdminRoute>
-          } />
+            {/* User Routes */}
+            <Route path="/" element={<UserLayout><Home /></UserLayout>} />
+            <Route path="/product/:id" element={<UserLayout><ProductDetails /></UserLayout>} />
+            <Route path="/cart" element={<UserLayout><Cart /></UserLayout>} />
+            <Route path="/checkout" element={
+              <ProtectedRoute>
+                <UserLayout><Checkout /></UserLayout>
+              </ProtectedRoute>
+            } />
+            <Route path="/order-success" element={
+              <ProtectedRoute>
+                <UserLayout><OrderSuccess /></UserLayout>
+              </ProtectedRoute>
+            } />
 
-        </Routes>
-      </Router>
-    </StoreProvider>
+            {/* Admin Routes */}
+            <Route path="/admin/login" element={<AdminLogin />} />
+
+            <Route path="/admin/dashboard" element={
+              <ProtectedAdminRoute>
+                <AdminDashboard />
+              </ProtectedAdminRoute>
+            } />
+            <Route path="/admin/add-item" element={
+              <ProtectedAdminRoute>
+                <AddItem />
+              </ProtectedAdminRoute>
+            } />
+            <Route path="/admin/restaurant" element={
+              <ProtectedAdminRoute>
+                <RestaurantSettings />
+              </ProtectedAdminRoute>
+            } />
+
+          </Routes>
+
+        </Router>
+      </AuthProvider>
+    </StoreProvider >
   );
 };
 
