@@ -36,6 +36,7 @@ export interface RestaurantDetails {
 
 export interface Order {
   id: string;
+  userId?: string;
   items: CartItem[];
   total: number;
   customerName: string;
@@ -43,4 +44,5 @@ export interface Order {
   customerAddress: string;
   landmark?: string;
   date: string;
+  status?: 'pending' | 'confirmed' | 'delivered' | 'cancelled';
 }

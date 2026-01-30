@@ -1,6 +1,13 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { FoodItem, CartItem, RestaurantDetails, Order } from '../types';
 import { INITIAL_MENU, DEFAULT_RESTAURANT } from '../constants';
+import {
+  getRestaurant,
+  saveRestaurant,
+  getFoodItems,
+  addFoodItem as addFoodItemToFirestore,
+  createOrder as createOrderInFirestore
+} from '../services/firestoreService';
 
 interface StoreContextType {
   // Restaurant & Menu
@@ -8,7 +15,7 @@ interface StoreContextType {
   menu: FoodItem[];
   addMenuItem: (item: FoodItem) => void;
   updateRestaurant: (details: RestaurantDetails) => void;
-  
+
   // Cart
   cart: CartItem[];
   addToCart: (item: FoodItem) => void;
@@ -21,11 +28,16 @@ interface StoreContextType {
   // Order
   placeOrder: (order: Order) => void;
   lastOrder: Order | null;
+
+  // Loading state
+  loading: boolean;
 }
 
 const StoreContext = createContext<StoreContextType | undefined>(undefined);
 
 export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
+  const [loading, setLoading] = useState(true);
+
   // Load initial state from local storage or defaults
   const [restaurant, setRestaurant] = useState<RestaurantDetails>(() => {
     const saved = localStorage.getItem('meatExpress_restaurant');
@@ -44,18 +56,70 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
   const [lastOrder, setLastOrder] = useState<Order | null>(null);
 
-  // Persistence Effects
+  // Load data from Firestore on mount
+  useEffect(() => {
+    const loadFromFirestore = async () => {
+      try {
+        // Load restaurant data
+        const restaurantData = await getRestaurant();
+        if (restaurantData) {
+          const { id, createdAt, updatedAt, ...rest } = restaurantData;
+          setRestaurant(rest as unknown as RestaurantDetails);
+        }
+
+        // Load menu items
+        const foodItems = await getFoodItems();
+        if (foodItems && foodItems.length > 0) {
+          setMenu(foodItems.map(item => {
+            const { createdAt, updatedAt, ...rest } = item;
+            return rest as unknown as FoodItem;
+          }));
+        }
+      } catch (error) {
+        console.error('Error loading from Firestore, using local data:', error);
+        // Keep using localStorage data as fallback
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadFromFirestore();
+  }, []);
+
+  // Persistence Effects - keep localStorage as backup
   useEffect(() => localStorage.setItem('meatExpress_restaurant', JSON.stringify(restaurant)), [restaurant]);
   useEffect(() => localStorage.setItem('meatExpress_menu', JSON.stringify(menu)), [menu]);
   useEffect(() => localStorage.setItem('meatExpress_cart', JSON.stringify(cart)), [cart]);
 
   // Actions
-  const addMenuItem = (item: FoodItem) => {
+  const addMenuItem = async (item: FoodItem) => {
+    // Add to local state immediately
     setMenu(prev => [item, ...prev]);
+
+    // Sync to Firestore
+    try {
+      const createdItem = await addFoodItemToFirestore(item);
+      // Update the item with Firestore ID
+      setMenu(prev => prev.map(i =>
+        i.id === item.id ? { ...i, id: createdItem.id } : i
+      ));
+    } catch (error) {
+      console.error('Error saving to Firestore:', error);
+      // Item is still in local state
+    }
   };
 
-  const updateRestaurant = (details: RestaurantDetails) => {
+  const updateRestaurant = async (details: RestaurantDetails) => {
+    // Update local state immediately
     setRestaurant(details);
+
+    // Sync to Firestore
+    try {
+      await saveRestaurant(details);
+    } catch (error) {
+      console.error('Error saving restaurant to Firestore:', error);
+      // Data is still in local state
+    }
   };
 
   const addToCart = (item: FoodItem) => {
@@ -86,10 +150,17 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
   const clearCart = () => setCart([]);
 
-  const placeOrder = (order: Order) => {
+  const placeOrder = async (order: Order) => {
     setLastOrder(order);
     clearCart();
-    // In a real app, send to API here
+
+    // Save order to Firestore
+    try {
+      await createOrderInFirestore(order);
+    } catch (error) {
+      console.error('Error saving order to Firestore:', error);
+      // Order is still in lastOrder state
+    }
   };
 
   const cartTotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
@@ -109,7 +180,8 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       cartTotal,
       cartCount,
       placeOrder,
-      lastOrder
+      lastOrder,
+      loading
     }}>
       {children}
     </StoreContext.Provider>
