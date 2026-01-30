@@ -1,0 +1,104 @@
+// Firestore Security Rules for Vegam Food Ordering App
+// Copy these rules to Firebase Console -> Firestore Database -> Rules
+
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // ============ HELPER FUNCTIONS ============
+    
+    // Check if user is authenticated
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    // Check if user is the owner of the document
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+    
+    // Get user's role from their profile document
+    function getUserRole() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role;
+    }
+    
+    // Check if user is admin
+    function isAdmin() {
+      return isAuthenticated() && getUserRole() == 'admin';
+    }
+    
+    // ============ USERS COLLECTION ============
+    match /users/{userId} {
+      // Anyone authenticated can read user profiles (for displaying names)
+      allow read: if isAuthenticated();
+      
+      // Users can only create their own profile
+      allow create: if isOwner(userId);
+      
+      // Users can only update their own profile, admins can update any
+      allow update: if isOwner(userId) || isAdmin();
+      
+      // Only admins can delete user profiles
+      allow delete: if isAdmin();
+    }
+    
+    // ============ RESTAURANTS COLLECTION ============
+    match /restaurants/{restaurantId} {
+      // Anyone can read restaurant details (public info)
+      allow read: if true;
+      
+      // Only admins can create/update/delete restaurant details
+      allow create, update, delete: if isAdmin();
+    }
+    
+    // ============ FOOD ITEMS COLLECTION ============
+    match /foodItems/{itemId} {
+      // Anyone can read food items (public menu)
+      allow read: if true;
+      
+      // Only admins can manage food items
+      allow create, update, delete: if isAdmin();
+    }
+    
+    // ============ ORDERS COLLECTION ============
+    match /orders/{orderId} {
+      // Users can read their own orders, admins can read all
+      allow read: if isAuthenticated() && 
+                    (resource.data.userId == request.auth.uid || isAdmin());
+      
+      // Authenticated users can create orders
+      allow create: if isAuthenticated() && 
+                      request.resource.data.userId == request.auth.uid;
+      
+      // Users can update their own pending orders, admins can update any
+      allow update: if isAuthenticated() && 
+                      (resource.data.userId == request.auth.uid || isAdmin());
+      
+      // Only admins can delete orders
+      allow delete: if isAdmin();
+    }
+    
+    // ============ CATCH-ALL RULE ============
+    // Deny all other access by default
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
+
+/*
+ * DEPLOYMENT INSTRUCTIONS:
+ * 
+ * 1. Go to Firebase Console: https://console.firebase.google.com
+ * 2. Select your project
+ * 3. Navigate to Firestore Database -> Rules
+ * 4. Copy and paste the above rules
+ * 5. Click "Publish"
+ * 
+ * TESTING RULES:
+ * Use the "Rules Playground" in Firebase Console to test:
+ * - Authenticated user reading their own orders
+ * - Unauthenticated user trying to create an order
+ * - Admin updating food items
+ * - User trying to delete another user's order
+ */
